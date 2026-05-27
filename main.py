@@ -137,6 +137,66 @@ def callback(call):
     elif data == "support":
         bot.send_message(call.message.chat.id, "🆘 Admin bilan yozish uchun: @adminusername\nYoki /support xabar")
 
+    # ===== ADMIN CALLBACKS =====
+    elif data == "admin_stats":
+        if user_id != ADMIN_ID:
+            bot.answer_callback_query(call.id, "❌ Ruxsat yo'q!")
+            return
+        text = f"""📊 **Bot Statistika**
+
+👥 Foydalanuvchilar: {db['stats']['total_users']}
+🎬 Kinolar: {len(db['movies'])}
+📈 Jami so'rovlar: {db['stats']['total_requests']}"""
+        bot.send_message(call.message.chat.id, text, parse_mode='Markdown')
+
+    elif data == "admin_movies":
+        if user_id != ADMIN_ID:
+            bot.answer_callback_query(call.id, "❌ Ruxsat yo'q!")
+            return
+        if not db["movies"]:
+            bot.send_message(call.message.chat.id, "Hozircha kinolar yo'q.")
+            return
+        text = "🎬 **Kinolar ro'yxati:**\n\n"
+        for code, movie in list(db["movies"].items())[:30]:
+            text += f"• `{code}` — {movie['title']}\n"
+        if len(db["movies"]) > 30:
+            text += f"\n_... va yana {len(db['movies']) - 30} ta_"
+        bot.send_message(call.message.chat.id, text, parse_mode='Markdown')
+
+    elif data == "admin_users":
+        if user_id != ADMIN_ID:
+            bot.answer_callback_query(call.id, "❌ Ruxsat yo'q!")
+            return
+        bot.send_message(call.message.chat.id,
+            f"👥 **Foydalanuvchilar:** {db['stats']['total_users']} ta\n\nBarchaga xabar yuborish: `/broadcast Xabar matni`",
+            parse_mode='Markdown')
+
+    elif data == "admin_addmovie":
+        if user_id != ADMIN_ID:
+            bot.answer_callback_query(call.id, "❌ Ruxsat yo'q!")
+            return
+        bot.send_message(call.message.chat.id,
+            "➕ **Kino qo'shish formati:**\n\n`/addmovie KOD | Nomi | Link | RasmLink | Tavsif`\n\n"
+            "**Misol:**\n`/addmovie ABC123 | Avengers | https://t.me/... | https://img... | Ajoyib film`",
+            parse_mode='Markdown')
+
+    elif data == "admin_delmovie":
+        if user_id != ADMIN_ID:
+            bot.answer_callback_query(call.id, "❌ Ruxsat yo'q!")
+            return
+        bot.send_message(call.message.chat.id,
+            "🗑 **Kino o'chirish:**\n\n`/delmovie KOD`\n\n**Misol:** `/delmovie ABC123`",
+            parse_mode='Markdown')
+
+    elif data == "admin_broadcast":
+        if user_id != ADMIN_ID:
+            bot.answer_callback_query(call.id, "❌ Ruxsat yo'q!")
+            return
+        bot.send_message(call.message.chat.id,
+            "📢 **Barcha foydalanuvchilarga xabar:**\n\n`/broadcast Xabar matni`\n\n"
+            f"**Jami:** {db['stats']['total_users']} ta foydalanuvchi",
+            parse_mode='Markdown')
+
 # ================= KINO =================
 def send_movie(chat_id, code):
     movie = db["movies"].get(code.upper())
@@ -172,6 +232,33 @@ def get_movie(message):
         bot.reply_to(message, "📝 Ishlatish: `/kino KOD`")
 
 # ================= ADMIN PANEL =================
+@bot.message_handler(commands=['admin'])
+def admin_panel(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "❌ Siz admin emassiz!")
+        return
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("➕ Kino qo'shish", callback_data="admin_addmovie"),
+        types.InlineKeyboardButton("🗑 Kino o'chirish", callback_data="admin_delmovie")
+    )
+    markup.add(
+        types.InlineKeyboardButton("📢 Xabar yuborish", callback_data="admin_broadcast"),
+        types.InlineKeyboardButton("📊 Statistika", callback_data="admin_stats")
+    )
+    markup.add(
+        types.InlineKeyboardButton("🎬 Kinolar ro'yxati", callback_data="admin_movies"),
+        types.InlineKeyboardButton("👥 Foydalanuvchilar", callback_data="admin_users")
+    )
+    text = f"""🔑 **Admin Panel**
+
+👥 Foydalanuvchilar: {db['stats']['total_users']}
+🎬 Kinolar: {len(db['movies'])}
+📈 So'rovlar: {db['stats']['total_requests']}
+
+Quyidagi amallardan birini tanlang:"""
+    bot.send_message(message.chat.id, text, parse_mode='Markdown', reply_markup=markup)
+
 @bot.message_handler(commands=['addmovie'])
 def add_movie(message):
     if message.from_user.id != ADMIN_ID:
